@@ -54,12 +54,19 @@ _В конце дня необходимо считать сколько ден�
 - Auth
 - Task management
 - Accounting
+
 ![domains_data model](./ates_domains_data_model.png)
 
 ## Services
 ![services](./../system-design-0/ates.drawio.png)
 
 ## Business cases.
+### Create task and assign to a user.
+![create_task_sequence](./create_task_sequence.png)
+
+### Complete task.
+![complete_task_sequence](./complete_task_sequence.png)
+
 ### Жизненный цикл новой задачи.
 CreateTask -> EstimateTask -> ShuffleTasks -> DecreaseBalance -> CompleteTask -> IncreaseBalance
 
