@@ -1,0 +1,47 @@
+@startuml
+title Create task and assign to a user.
+
+actor "User" as user
+participant "Auth service" as auth
+participant "Task service" as ts
+database "Task service \nDB" as ts_db
+queue "Kafka" as kafka
+participant "Accounting service" as ac
+database "Accounting service \nDB" as ac_db
+participant "Analytics service" as an
+database "Analytics service \nDB" as an_db
+
+activate user
+user -> auth: POST /auth
+activate auth
+auth -> user: JWT
+deactivate auth
+
+user -> ts: POST /tasks
+activate ts
+ts -> ts: validate task
+ts -> ts_db: save task info
+ts -> kafka: produce event: //Tasks.Created//
+ts -> user: Accepted
+deactivate  user
+...
+ts o-> kafka: consume event: //Tasks.Created//
+ts -> ts: estimate task
+ts -> ts_db: update task
+ts -> kafka: produce event: //Tasks.Estimated//
+an o-> kafka: consume event: //Tasks.Estimated//
+activate an
+an -> an_db: update the most \nexpensive task
+deactivate an
+...
+ts o-> kafka: consume event: //Tasks.Estimated//
+ts -> ts: shuffle all tasks
+ts -> ts_db: update all \nnon-closed tasks
+ts -> kafka: produce events: //Tasks.Assigned//
+deactivate ts
+
+ac o-> kafka: consume event: //Tasks.Assigned//
+activate ac
+ac -> ac_db: update user balance
+
+@enduml

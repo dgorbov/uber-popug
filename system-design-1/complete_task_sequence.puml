@@ -1,0 +1,31 @@
+@startuml
+title Complete task.
+
+actor "User" as user
+participant "Auth service" as auth
+participant "Task service" as ts
+database "Task service \nDB" as ts_db
+queue "Kafka" as kafka
+participant "Accounting service" as ac
+database "Accounting service \nDB" as ac_db
+
+activate user
+user -> auth: POST /auth
+activate auth
+auth -> user: JWT
+deactivate auth
+
+user -> ts: POST /tasks/:id/complete
+activate ts
+ts -> ts: check if \ncan complete
+ts -> ts_db: update task
+ts -> kafka: produce event: //Tasks.Completed//
+ts -> user: Accepted
+deactivate  user
+deactivate ts
+
+ac o-> kafka: consume event: //Tasks.Completed//
+activate ac
+ac -> ac_db: update user balance
+
+@enduml
