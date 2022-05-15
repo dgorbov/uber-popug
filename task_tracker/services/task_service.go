@@ -23,8 +23,8 @@ const (
 type TaskService interface {
 	CreateTask(description string, assignee uuid.UUID) Task
 	GetTask(id uuid.UUID) (Task, error)
-	GetAllToDoTasks(assignee uuid.UUID) []Task
-	CompleteTask(id uuid.UUID) (Task, error)
+	GetAllUserTasks(assignee uuid.UUID) []Task
+	CompleteTask(taskId uuid.UUID, userId uuid.UUID) (Task, error)
 }
 
 type taskService struct {
@@ -62,14 +62,14 @@ func (ts *taskService) GetTask(id uuid.UUID) (Task, error) {
 	}
 }
 
-func (ts *taskService) GetAllToDoTasks(assignee uuid.UUID) []Task {
+func (ts *taskService) GetAllUserTasks(assignee uuid.UUID) []Task {
 	ts.Lock()
 	defer ts.Unlock()
 
 	var tasks []Task
 
 	for _, task := range ts.tasks {
-		if task.Assigned == assignee && task.Status == TODO {
+		if task.Assigned == assignee {
 			tasks = append(tasks, task)
 		}
 	}
@@ -77,14 +77,18 @@ func (ts *taskService) GetAllToDoTasks(assignee uuid.UUID) []Task {
 	return tasks
 }
 
-func (ts *taskService) CompleteTask(id uuid.UUID) (Task, error) {
-	var task, err = ts.GetTask(id)
+func (ts *taskService) CompleteTask(taskId uuid.UUID, userId uuid.UUID) (Task, error) {
+	var task, err = ts.GetTask(taskId)
 	if err != nil {
 		return task, err
 	}
 
+	if task.Assigned != userId {
+		return task, fmt.Errorf("task with id=%d does not assigned to user=%d", taskId, userId)
+	}
+
 	if task.Status == DONE {
-		return task, fmt.Errorf("task with id=%d is already completed", id)
+		return task, fmt.Errorf("task with taskId=%d is already completed", taskId)
 	}
 
 	ts.Lock()
