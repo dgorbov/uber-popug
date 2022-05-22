@@ -24,6 +24,7 @@ type TaskService interface {
 	CreateTask(description string, assignee uuid.UUID) Task
 	GetTask(id uuid.UUID) (Task, error)
 	GetAllUserTasks(assignee uuid.UUID) []Task
+	GetAllTasks() []Task
 	CompleteTask(taskId uuid.UUID, userId uuid.UUID) (Task, error)
 }
 
@@ -72,6 +73,19 @@ func (ts *taskService) GetAllUserTasks(assignee uuid.UUID) []Task {
 		if task.Assigned == assignee {
 			tasks = append(tasks, task)
 		}
+	}
+
+	return tasks
+}
+
+func (ts *taskService) GetAllTasks() []Task {
+	ts.Lock()
+	defer ts.Unlock()
+
+	var tasks []Task
+
+	for _, task := range ts.tasks {
+		tasks = append(tasks, task)
 	}
 
 	return tasks

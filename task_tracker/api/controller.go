@@ -10,32 +10,67 @@ import (
 type controller struct {
 	taskService services.TaskService
 	authService services.AuthService
+	userService services.UserService
 }
 
-func Init(router *gin.Engine, authService services.AuthService, taskService services.TaskService) {
-	controller := controller{taskService: taskService, authService: authService}
+type TaskDto struct {
+	AssignedName string `json:"assigned_name"`
+	services.Task
+}
+
+func Init(router *gin.Engine, authService services.AuthService, taskService services.TaskService, userService services.UserService) {
+	controller := controller{taskService: taskService, authService: authService, userService: userService}
 
 	router.POST("/tasks", controller.createTask)
 	router.GET("/tasks/:id", controller.getTask)
+	router.GET("/tasks/", controller.getAllTasks)
 	router.GET("/tasks/my", controller.getAllMyTasks)
 	router.POST("/tasks/:id/done", controller.completeTask)
 	router.POST("/tasks/shuffle", controller.shuffleTasks)
 }
 
+func createTaskDto(task services.Task, user services.UserInfo) TaskDto {
+	return TaskDto{user.Name, task}
+}
+
+func (con *controller) createTaskDtoArray(tasks []services.Task) ([]TaskDto, error) {
+	tasksDto := make([]TaskDto, len(tasks))
+	for idx, task := range tasks {
+		user, err := con.userService.GetUser(task.Assigned)
+		if err != nil {
+			return nil, err
+		}
+		tasksDto[idx] = createTaskDto(task, user)
+	}
+
+	return tasksDto, nil
+}
+
+func (con *controller) getMyUserInfo(c *gin.Context) (services.UserInfo, error) {
+	myId := con.authService.GetUserId(c)
+	return con.userService.GetUser(myId)
+}
+
 func (con *controller) createTask(c *gin.Context) {
 	type CreateTaskRequest struct {
-		Description string    `json:"description"`
-		Assigned    uuid.UUID `json:"assigned"`
+		Description string `json:"description"`
 	}
 
 	var ctr CreateTaskRequest
 	err := c.ShouldBindJSON(&ctr)
 	if err != nil {
 		c.String(http.StatusBadRequest, err.Error())
+		return
 	}
 
-	task := con.taskService.CreateTask(ctr.Description, ctr.Assigned)
-	c.JSON(http.StatusOK, task)
+	user, err := con.userService.GetRandomUser()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	task := con.taskService.CreateTask(ctr.Description, user.Id)
+	c.JSON(http.StatusOK, createTaskDto(task, user))
 }
 
 func (con *controller) getTaskByIdOrWriteError(c *gin.Context) (services.Task, error) {
@@ -57,14 +92,45 @@ func (con *controller) getTaskByIdOrWriteError(c *gin.Context) (services.Task, e
 func (con *controller) getTask(c *gin.Context) {
 	task, err := con.getTaskByIdOrWriteError(c)
 	if err == nil {
-		c.JSON(http.StatusOK, task)
+		user, err := con.userService.GetUser(task.Assigned)
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+
+		c.JSON(http.StatusOK, createTaskDto(task, user))
 	}
 }
 
+func (con *controller) getAllTasks(c *gin.Context) {
+	role, err := con.authService.GetUserRole(c)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	if role != services.RoleAdmin && role != services.RoleManager {
+		c.String(http.StatusForbidden, err.Error())
+		return
+	}
+
+	allTasks := con.taskService.GetAllTasks()
+	allTasksDto, err := con.createTaskDtoArray(allTasks)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, allTasksDto)
+}
+
 func (con *controller) getAllMyTasks(c *gin.Context) {
-	myId := con.authService.GetUserId(c)
-	myTasks := con.taskService.GetAllUserTasks(myId)
-	c.JSON(http.StatusOK, myTasks)
+	myUser, err := con.getMyUserInfo(c)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	myTasks := con.taskService.GetAllUserTasks(myUser.Id)
+	myTasksDto, _ := con.createTaskDtoArray(myTasks)
+	c.JSON(http.StatusOK, myTasksDto)
 }
 
 func (con *controller) completeTask(c *gin.Context) {
@@ -73,13 +139,18 @@ func (con *controller) completeTask(c *gin.Context) {
 		return
 	}
 
-	userId := con.authService.GetUserId(c)
-	task, err = con.taskService.CompleteTask(task.Id, userId)
+	myUser, err := con.getMyUserInfo(c)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	task, err = con.taskService.CompleteTask(task.Id, myUser.Id)
 	if err != nil {
 		c.String(http.StatusBadRequest, err.Error())
+		return
 	}
 
-	c.JSON(http.StatusOK, task)
+	c.JSON(http.StatusOK, createTaskDto(task, myUser))
 }
 
 func (con *controller) shuffleTasks(c *gin.Context) {

@@ -484,8 +484,8 @@
     {
       "id": "3515e07b-5315-402c-9a32-3f6d5144b66d",
       "createdTimestamp": 1652600414303,
-      "username": "popug",
-      "email" : "popug@uber-popug.com",
+      "username": "popug1",
+      "email" : "popug1@uber-popug.com",
       "enabled": true,
       "totp": false,
       "emailVerified": true,
@@ -498,7 +498,53 @@
       "credentials": [
         {
           "type": "password",
-          "value": "popug"
+          "value": "popug1"
+        }
+      ],
+      "notBefore": 0,
+      "groups": []
+    },
+    {
+      "id": "6530941e-8dea-4b7b-b884-8e69806ebd49",
+      "createdTimestamp": 1652600414303,
+      "username": "popug2",
+      "email" : "popug2@uber-popug.com",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": true,
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-uber-popug",
+        "popug"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "popug2"
+        }
+      ],
+      "notBefore": 0,
+      "groups": []
+    },
+    {
+      "id": "24f64455-fe12-4f61-97ec-216434fb44ef",
+      "createdTimestamp": 1652600414303,
+      "username": "popug3",
+      "email" : "popug3@uber-popug.com",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": true,
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-uber-popug",
+        "popug"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "popug3"
         }
       ],
       "notBefore": 0,

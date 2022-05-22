@@ -1,11 +1,10 @@
-package test
+package api
 
 import (
 	"github.com/google/uuid"
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"task_tracker/api"
 	"task_tracker/services"
 	"testing"
 
@@ -26,13 +25,25 @@ func (a *authServiceStub) GetUserRole(_ *gin.Context) (services.UserRole, error)
 	return a.userRole, nil
 }
 
+type userServiceStub struct {
+	stubUser services.UserInfo
+}
+
+func (u *userServiceStub) GetUser(userId uuid.UUID) (services.UserInfo, error) {
+	return u.stubUser, nil
+}
+
+func (u *userServiceStub) GetRandomUser() (services.UserInfo, error) {
+	return u.stubUser, nil
+}
+
 func Test_CreateTask_ProvideValidPayload_TaskCreated(t *testing.T) {
 	router := gin.New()
-	api.Init(router, &authServiceStub{}, services.NewTaskService())
+	Init(router, &authServiceStub{}, services.NewTaskService(), &userServiceStub{})
 
 	req, _ := http.NewRequest(
 		"POST", "/tasks/",
-		strings.NewReader(`{"description": "test task for TestCreateTask", "assigned": "8d278e16-5da5-4105-a0d4-6b7a8fa4e163"}`))
+		strings.NewReader(`{"description": "test_resources task for TestCreateTask", "assigned": "8d278e16-5da5-4105-a0d4-6b7a8fa4e163"}`))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -42,10 +53,10 @@ func Test_CreateTask_ProvideValidPayload_TaskCreated(t *testing.T) {
 
 func Test_GetTask_ProvideExistingTaskId_ReturnTask(t *testing.T) {
 	ts := services.NewTaskService()
-	task := ts.CreateTask("test task for TestGetTask", uuid.New())
+	task := ts.CreateTask("test_resources task for TestGetTask", uuid.New())
 
 	router := gin.New()
-	api.Init(router, &authServiceStub{}, ts)
+	Init(router, &authServiceStub{}, ts, &userServiceStub{})
 
 	req, _ := http.NewRequest("GET", "/tasks/"+task.Id.String(), nil)
 	w := httptest.NewRecorder()
@@ -60,33 +71,33 @@ func Test_GetAllMyTasks_CreateSeveralTaskAndAssigneeToUserRequester_ReturnAllAss
 	userB := uuid.New()
 
 	ts := services.NewTaskService()
-	ts.CreateTask("test task1 for userA", userA)
-	ts.CreateTask("test task2 for userA", userA)
-	ts.CreateTask("test task3 for userB", userB)
+	ts.CreateTask("test_resources task1 for userA", userA)
+	ts.CreateTask("test_resources task2 for userA", userA)
+	ts.CreateTask("test_resources task3 for userB", userB)
 
 	router := gin.New()
-	api.Init(router, &authServiceStub{userId: userA}, ts)
+	Init(router, &authServiceStub{userId: userA}, ts, &userServiceStub{})
 
 	req, _ := http.NewRequest("GET", "/tasks/my", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, w.Code, http.StatusOK)
+	assert.Equal(t, http.StatusOK, w.Code)
 	t.Logf("response: %s", w.Body.String())
 }
 
 func Test_CompleteTask_ProvideValidTaskIdAndUserId_TaskCompleted(t *testing.T) {
-	user := uuid.New()
+	user := services.UserInfo{Id: uuid.New(), Name: "task owner"}
 	ts := services.NewTaskService()
-	task := ts.CreateTask("test task for user to complete", user)
+	task := ts.CreateTask("test_resources task for user to complete", user.Id)
 
 	router := gin.New()
-	api.Init(router, &authServiceStub{userId: user}, ts)
+	Init(router, &authServiceStub{userId: user.Id}, ts, &userServiceStub{stubUser: user})
 
 	req, _ := http.NewRequest("POST", "/tasks/"+task.Id.String()+"/done", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, w.Code, http.StatusOK)
+	assert.Equal(t, http.StatusOK, w.Code)
 	t.Logf("response: %s", w.Body.String())
 }

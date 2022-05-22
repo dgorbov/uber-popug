@@ -3,9 +3,11 @@
 - Requires keycloak as auth service
 - All APIs are protected and requires header `Authorization: Bearer {access_token}`
 
-## Env variables
-- `PORT` e.g. 8081
-- `KEYCLOAK_URL` e.g. http://localhost:8080/
+## Required env variables
+- `PORT`
+- `KEYCLOAK_URL`
+- `KAFKA_TOPIC_NEW_USER`
+- `KAFKA_BROKERS_URL` coma separated values: `localhost:9091,localhost:9092,localhost:9093`.
 
 ## Tests
 - `go test -v ./...`
@@ -14,8 +16,7 @@
 - `docker-compose up`
 - keycloak container will spawn with test realm from file `test/uber-popug-realm.json`
 - You can enter keycloak admin panel at: `http://localhost:8080/admin/` with admin:admin
-- `export PORT=8081`
-- `export KEYCLOAK_URL=http://localhost:8080/`
+- `export PORT=8081 KEYCLOAK_URL=http://localhost:8080 KAFKA_TOPIC_NEW_USER=new-user KAFKA_BROKERS_URL=localhost:9091`
 - `go build task_tracker`
 - `go run task_tracker`
 
